@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>骨科术前影像评估与预测系统 · 完整版</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <!-- PDF 生成依赖 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background: #f0f4f8; padding: 24px; color: #1a2b3c; }
+    .app-container { max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Header */
+    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 16px 24px; border-radius: 20px; box-shadow: 0 8px 18px rgba(0,20,40,0.06); }
+    .logo h1 { font-size: 1.6rem; font-weight: 600; color: #0b3b5c; display: flex; align-items: center; gap: 10px; }
+    .logo i { color: #2a7faa; }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .doctor-badge { display: flex; align-items: center; gap: 8px; background: #f0f7fe; border-radius: 40px; padding: 6px 16px; border: 1.5px solid #cbd5e1; transition: border-color .15s; }
+    .doctor-badge:focus-within { border-color: #2a7faa; }
+    .doctor-badge i { color: #2a7faa; }
+    .doctor-badge input { border: none; background: transparent; font-size: 0.9rem; font-weight: 500; color: #0b3b5c; outline: none; width: 110px; }
+    .doctor-badge input::placeholder { color: #94a3b8; font-weight: 400; }
+    .patient-badge { display: flex; align-items: center; gap: 12px; background: #e8f0fe; padding: 8px 20px; border-radius: 40px; font-weight: 500; }
+    .patient-badge i { color: #1e6f9f; }
+
+    /* Steps */
+    .steps-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+    .step-card { background: white; border-radius: 20px; padding: 16px 18px; flex: 1 1 180px; box-shadow: 0 4px 12px rgba(0,20,40,0.04); border-left: 4px solid #cbd5e1; transition: all 0.2s; cursor: pointer; }
+    .step-card.active { border-left-color: #2a7faa; background: #f7fbff; box-shadow: 0 8px 18px rgba(42,127,170,0.12); }
+    .step-card .step-num { font-size: 0.8rem; font-weight: 600; color: #64748b; letter-spacing: 0.5px; }
+    .step-card .step-title { font-weight: 600; font-size: 1rem; margin: 6px 0 4px; }
+    .step-card .step-desc { font-size: 0.8rem; color: #475569; }
+
+    /* Main */
+    .main-grid { display: grid; grid-template-columns: 1.2fr 0.9fr; gap: 20px; }
+    .panel { background: white; border-radius: 24px; box-shadow: 0 12px 28px rgba(0,20,40,0.06); padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; gap: 8px; color: #0b3b5c; }
+    .badge { background: #e2e8f0; border-radius: 30px; padding: 4px 12px; font-size: 0.75rem; font-weight: 500; color: #1e293b; }
+
+    .xray-container { position: relative; background: #0b1a26; border-radius: 18px; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 380px; border: 2px solid #cbd5e1; }
+    #xrayCanvas { display: block; width: 100%; height: auto; background: #1e2b36; cursor: crosshair; }
+    .upload-area { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #94a3b8; padding: 40px 20px; text-align: center; }
+    .upload-area i { font-size: 2.5rem; color: #5f7f9a; }
+
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { border: none; padding: 10px 20px; border-radius: 40px; font-weight: 500; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.15s; background: #f1f5f9; color: #1e293b; }
+    .btn-primary { background: #2a7faa; color: white; box-shadow: 0 6px 14px rgba(42,127,170,0.25); }
+    .btn-primary:hover { background: #1f668b; }
+    .btn-outline { background: transparent; border: 1.5px solid #cbd5e1; }
+    .btn-outline:hover { background: #f1f5f9; }
+    .btn-success { background: #0f7b5c; color: white; }
+    .btn-success:hover { background: #0b6249; }
+    .btn-ghost { background: transparent; color: #64748b; padding: 6px 10px; }
+    .btn-ghost:hover { background: #f1f5f9; }
+    .btn:disabled { opacity: 0.45; pointer-events: none; }
+
+    .metric-group { display: flex; gap: 20px; flex-wrap: wrap; background: #f8fafc; border-radius: 16px; padding: 14px 18px; }
+    .metric-item { display: flex; flex-direction: column; }
+    .metric-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; }
+    .metric-value { font-size: 1.6rem; font-weight: 700; color: #0b3b5c; line-height: 1.2; }
+    .metric-unit { font-size: 0.9rem; font-weight: 400; color: #64748b; margin-left: 4px; }
+
+    .point-list { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem; }
+    .point-chip { background: #eef2f6; border-radius: 20px; padding: 4px 12px; display: flex; align-items: center; gap: 6px; }
+    .point-chip .dot { width: 10px; height: 10px; border-radius: 50%; background: #f97316; }
+
+    /* Forms */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field label { font-size: 0.78rem; font-weight: 600; color: #475569; }
+    .form-field input, .form-field select { padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 0.9rem; background: #f9fcff; }
+    .form-field input:focus, .form-field select:focus { outline: 2px solid #2a7faa40; border-color: #2a7faa; }
+
+    .prediction-area { background: #f0f7fe; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+    .gauge-container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .gauge-item { text-align: center; flex: 1; min-width: 100px; }
+    .gauge-item .gauge-label { font-size: 0.8rem; font-weight: 500; color: #475569; }
+    .gauge-item .gauge-value { font-size: 1.4rem; font-weight: 700; color: #0b3b5c; }
+    .reason-list { background: white; border-radius: 14px; padding: 12px 16px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+    .reason-list li { display: flex; align-items: center; gap: 8px; }
+    .reason-list i { color: #f97316; }
+
+    .chip { background: #e6f0fa; border-radius: 30px; padding: 6px 14px; font-size: 0.8rem; }
+    .hidden { display: none !important; }
+
+    /* Auto search */
+    .search-wrap { position: relative; }
+    .search-input { flex: 1; padding: 10px 14px; border-radius: 40px; border: 1.5px solid #e2e8f0; background: #f9fcff; font-size: 0.9rem; }
+    .search-input:focus { outline: 2px solid #2a7faa40; border-color: #2a7faa; }
+    .auto-search-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: white; border-radius: 14px; box-shadow: 0 12px 30px rgba(0,20,40,0.18); max-height: 240px; overflow-y: auto; z-index: 50; display: none; padding: 6px; border: 1px solid #e2e8f0; }
+    .auto-search-dropdown.show { display: block; }
+    .auto-search-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: background 0.12s; }
+    .auto-search-item:hover { background: #f0f7fe; }
+    .auto-search-item .info { font-size: 0.85rem; }
+    .auto-search-item .name { font-weight: 600; }
+
+    .patient-card, .record-card { background: #f8fafc; border-radius: 14px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1.5px solid #e2e8f0; transition: all 0.15s; }
+    .patient-card:hover, .record-card:hover { border-color: #2a7faa; background: #f0f7fe; }
+    .patient-card .name, .record-card .name { font-weight: 600; font-size: 0.95rem; }
+    .patient-card .meta, .record-card .meta { font-size: 0.78rem; color: #64748b; }
+    .record-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(11, 59, 92, 0.42); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+    .modal-backdrop.show { display: flex; }
+    .modal { background: white; border-radius: 24px; padding: 24px; width: min(720px, 92vw); max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,20,40,0.25); animation: modalIn 0.2s; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-header h2 { font-size: 1.2rem; color: #0b3b5c; display: flex; align-items: center; gap: 8px; }
+
+    /* Toast */
+    .toast-container { position: fixed; top: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #0f7b5c; color: white; padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; box-shadow: 0 8px 24px rgba(15,123,92,0.35); display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s; min-width: 240px; max-width: 380px; }
+    .toast.error { background: #b91c1c; box-shadow: 0 8px 24px rgba(185,28,28,0.35); }
+    .toast.info { background: #2a7faa; box-shadow: 0 8px 24px rgba(42,127,170,0.35); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    /* Loading */
+    .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.88); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 1500; backdrop-filter: blur(2px); }
+    .loading-overlay.show { display: flex; }
+    .spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid rgba(42,127,170,0.2); border-top-color: #2a7faa; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-weight: 500; color: #0b3b5c; }
+
+    .empty-hint { text-align: center; color: #94a3b8; padding: 20px; font-size: 0.85rem; }
+    .api-note { background: #fefce8; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 14px; font-size: 0.78rem; color: #854d0e; line-height: 1.6; }
+    .api-note code { background: #fef3c7; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo">
+      <i class="fas fa-bone"></i>
+      <h1>OrthoAI 术前评估</h1>
+    </div>
+    <div class="header-right">
+      <!-- 主治医生（自动保存，下次默认沿用） -->
+      <div class="doctor-badge" title="主治医生姓名（自动保存，下次访问默认沿用）">
+        <i class="fas fa-user-md"></i>
+        <input type="text" id="doctorNameInput" placeholder="主治医生姓名" maxlength="20" />
+      </div>
+      <button class="btn btn-outline" id="historyBtn"><i class="fas fa-history"></i> 历史病例</button>
+      <div class="patient-badge">
+        <i class="fas fa-user-circle"></i>
+        <span id="patientDisplay">未绑定患者</span>
+        <span class="chip" id="patientIdChip" style="background:#d9e9f7;">ID: —</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps-row" id="stepsRow">
+    <div class="step-card active" data-step="1"><div class="step-num">步骤 1</div><div class="step-title">登录 & 创建病历</div><div class="step-desc">查询患者，绑定并创建新病例</div></div>
+    <div class="step-card" data-step="2"><div class="step-num">步骤 2</div><div class="step-title">导入 X 光片</div><div class="step-desc">上传正位 X 线影像</div></div>
+    <div class="step-card" data-step="3"><div class="step-num">步骤 3</div><div class="step-title">AI 自动测量</div><div class="step-desc">分割 & 关键点检测，计算 MFLA</div></div>
+    <div class="step-card" data-step="4"><div class="step-num">步骤 4</div><div class="step-title">人工校验</div><div class="step-desc">拖动关键点，实时更新 MFLA</div></div>
+    <div class="step-card" data-step="5"><div class="step-num">步骤 5</div><div class="step-title">临床数据 & 预测</div><div class="step-desc">基线数据 + 预测模型</div></div>
+    <div class="step-card" data-step="6"><div class="step-num">步骤 6</div><div class="step-title">报告导出</div><div class="step-desc">生成 PDF 并归档</div></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-grid">
+    <!-- 左：影像区 -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3><i class="fas fa-x-ray" style="color:#2a7faa;"></i> 正位 X 线影像</h3>
+        <span class="badge" id="imageStatusBadge">未上传</span>
+      </div>
+
+      <div class="xray-container" id="xrayContainer">
+        <div class="upload-area" id="uploadPlaceholder">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p style="font-weight:500;">点击下方按钮上传 X 光片</p>
+          <p style="font-size:0.8rem;">支持 JPG / PNG</p>
+        </div>
+        <canvas id="xrayCanvas" width="700" height="500" style="display: none;"></canvas>
+      </div>
+
+      <div class="btn-group">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+        <button class="btn btn-outline" id="uploadBtn"><i class="fas fa-upload"></i> 上传 X 光片</button>
+        <button class="btn btn-primary" id="autoMeasureBtn"><i class="fas fa-robot"></i> 自动测量</button>
+        <button class="btn btn-success" id="confirmMeasureBtn"><i class="fas fa-check-circle"></i> 确认并保存测量结果</button>
+      </div>
+
+      <div class="metric-group">
+        <div class="metric-item"><span class="metric-label">MFLA 角度</span><div><span class="metric-value" id="mflaValue">—</span><span class="metric-unit">°</span></div></div>
+        <div class="metric-item"><span class="metric-label">骨折线起止点</span><div style="font-size:0.9rem; font-weight:500;" id="fracturePointsLabel">尚未标记</div></div>
+        <div class="metric-item"><span class="metric-label">股骨轮廓</span><div style="font-size:0.9rem; font-weight:500;" id="contourLabel">—</div></div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px;">
+        <label style="font-size:0.85rem; font-weight:500;"><i class="fas fa-arrows-alt"></i> 拖动关键点微调</label>
+        <span style="font-size:0.8rem; color:#64748b;">点击并拖动橙色/绿色标记点</span>
+      </div>
+      <div class="point-list" id="pointList"></div>
+    </div>
+
+    <!-- 右：工作区 -->
+    <div class="panel" id="rightPanel">
+      <!-- 步骤1 -->
+      <div id="step1Content">
+        <div class="panel-header"><h3><i class="fas fa-id-card"></i> 患者查询与绑定</h3></div>
+        <div class="search-wrap">
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="patientSearchInput" class="search-input" placeholder="输入患者ID或姓名，实时匹配..." autocomplete="off" />
+            <button class="btn btn-primary" id="searchPatientBtn"><i class="fas fa-search"></i> 查询</button>
+          </div>
+          <div class="auto-search-dropdown" id="patientDropdown"></div>
+        </div>
+
+        <div class="api-note" style="margin-top:12px;">
+          <i class="fas fa-plug"></i> <strong>数据源：</strong>当前为本地模拟患者库（<code>HospitalAPI</code>）。接入医院真实数据库时，请修改 <code>HospitalAPI.searchPatients()</code> 方法，指向后端 REST API。
+        </div>
+
+        <div style="font-size:0.85rem; color:#475569; margin:12px 0 8px; display:flex; justify-content:space-between; align-items:center;">
+          <span><i class="fas fa-database"></i> 患者库 <span id="patientCountLabel">(0)</span></span>
+          <button class="btn btn-ghost" id="refreshPatientBtn" title="刷新患者库"><i class="fas fa-sync"></i></button>
+        </div>
+
+        <div id="patientResultList" style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn btn-outline" id="newPatientBtn"><i class="fas fa-user-plus"></i> 新增患者</button>
+        </div>
+      </div>
+
+      <!-- 步骤5 -->
+      <div id="step5Content" class="hidden">
+        <div class="panel-header"><h3><i class="fas fa-chart-line"></i> 临床数据与预测</h3></div>
+        <div class="form-grid">
+          <div class="form-field"><label>年龄</label><input type="number" id="ageInput" value="56" /></div>
+          <div class="form-field"><label>性别</label><select id="genderInput"><option>男</option><option>女</option></select></div>
+          <div class="form-field"><label>ASA 分级</label><select id="asaInput"><option>I</option><option>II</option><option selected>III</option><option>IV</option></select></div>
+          <div class="form-field"><label>外侧壁完整性</label><select id="lateralWallInput"><option>完整</option><option selected>不完整</option></select></div>
+          <div class="form-field"><label>骨质疏松</label><select id="osteoporosisInput"><option>无</option><option selected>有</option></select></div>
+          <div class="form-field"><label>骨折类型</label><select id="fractureTypeInput"><option>转子间</option><option>转子下</option><option>股骨颈</option></select></div>
+        </div>
+        <button class="btn btn-primary" id="predictBtn" style="margin-top:8px;"><i class="fas fa-microchip"></i> 生成预测</button>
+
+        <div class="prediction-area hidden" id="predictionResult">
+          <div class="gauge-container">
+            <div class="gauge-item"><div class="gauge-label">手术难度</div><div class="gauge-value" id="difficultyValue" style="color:#c2410c;">—</div></div>
+            <div class="gauge-item"><div class="gauge-label">预计手术时间</div><div class="gauge-value" id="surgeryTimeValue">—</div></div>
+            <div class="gauge-item"><div class="gauge-label">复位困难风险</div><div class="gauge-value" id="riskValue" style="color:#b91c1c;">—</div></div>
+          </div>
+          <div style="font-size:0.85rem; font-weight:600; margin-top:4px;">可解释原因：</div>
+          <ul class="reason-list" id="reasonList"></ul>
+        </div>
+      </div>
+
+      <!-- 步骤6 -->
+      <div id="step6Content" class="hidden">
+        <div class="panel-header"><h3><i class="fas fa-file-pdf"></i> 报告导出与归档</h3></div>
+        <div style="background:#f8fafc; padding:16px; border-radius:16px; font-size:0.9rem;">
+          <p><i class="fas fa-check-circle" style="color:#0f7b5c;"></i> 测量结果已保存</p>
+          <p><i class="fas fa-check-circle" style="color:#0f7b5c;"></i> 预测结果已生成</p>
+          <p style="margin-top:8px;"><strong>患者：</strong> <span id="reportPatient">—</span></p>
+          <p><strong>主治医生：</strong> <span id="reportDoctor">—</span></p>
+          <p><strong>MFLA：</strong> <span id="reportMfla">—</span> °</p>
+          <p><strong>记录 ID：</strong> <span id="reportRecordId">—</span></p>
+        </div>
+        <div class="btn-group" style="margin-top:16px;">
+          <button class="btn btn-primary" id="exportPdfBtn"><i class="fas fa-download"></i> 生成 PDF 报告</button>
+          <button class="btn btn-success" id="archiveBtn"><i class="fas fa-cloud-upload-alt"></i> 生成PDF并归档到数据库</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新增患者 Modal -->
+<div class="modal-backdrop" id="newPatientModal">
+  <div class="modal" style="width: min(520px, 92vw);">
+    <div class="modal-header">
+      <h2><i class="fas fa-user-plus" style="color:#2a7faa;"></i> 新增患者</h2>
+      <button class="btn btn-ghost" id="closeNewPatientBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid" style="grid-template-columns: 1fr;">
+      <div class="form-field"><label>患者 ID</label><input id="npId" placeholder="如 P-2024-0123" /></div>
+      <div class="form-field"><label>姓名</label><input id="npName" placeholder="姓名" /></div>
+      <div class="form-field" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div><label>性别</label><select id="npGender"><option>男</option><option>女</option></select></div>
+        <div><label>年龄</label><input type="number" id="npAge" placeholder="如 60" /></div>
+      </div>
+      <div class="form-field"><label>诊断</label><input id="npDiagnosis" placeholder="如 股骨转子间骨折" /></div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+      <button class="btn btn-outline" id="cancelNewPatientBtn">取消</button>
+      <button class="btn btn-primary" id="saveNewPatientBtn"><i class="fas fa-save"></i> 保存到患者库</button>
+    </div>
+  </div>
+</div>
+
+<!-- 历史病例 Modal -->
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal" style="width: min(780px, 94vw);">
+    <div class="modal-header">
+      <h2><i class="fas fa-history" style="color:#2a7faa;"></i> 历史病例搜索</h2>
+      <button class="btn btn-ghost" id="closeHistoryBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; gap:10px; margin-bottom:14px;">
+      <input type="text" id="historySearchInput" class="search-input" placeholder="输入记录ID / 患者ID / 患者姓名..." />
+      <button class="btn btn-primary" id="historySearchBtn"><i class="fas fa-search"></i> 搜索</button>
+    </div>
+    <div id="historyResultList" style="display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">AI 分析中...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ============================================================
+   1. 医院数据库接口（HospitalAPI）
+   ============================================================
+   ⚠️ 真实部署时，请将以下方法替换为对医院 HIS/LIS/PACS 的调用。
+   推荐架构：前端 → 后端API网关 → 医院数据库
+   后端示例（Node.js + Express + MySQL）：
+
+     GET /api/patients/search?keyword=张
+     app.get('/api/patients/search', async (req, res) => {
+       const { keyword } = req.query;
+       const sql = `
+         SELECT patient_id AS id, name, gender, age, diagnosis
+         FROM patients
+         WHERE patient_id LIKE ? OR name LIKE ?
+         LIMIT 20
+       `;
+       const [rows] = await pool.query(sql, [`%${keyword}%`, `%${keyword}%`]);
+       res.json({ success: true, data: rows });
+     });
+
+   前端调用（替换下方 HospitalAPI.searchPatients）：
+     async searchPatients(keyword) {
+       const resp = await fetch(`/api/patients/search?keyword=${encodeURIComponent(keyword)}`, {
+         headers: { 'Authorization': `Bearer ${authToken}` }
+       });
+       const json = await resp.json();
+       return json.data;
+     }
+
+   安全须知：
+   - 使用 HTTPS；JWT/OAuth2 身份认证
+   - 后端做权限校验与数据脱敏
+   - 操作日志审计；遵守《个人信息保护法》
+   ============================================================ */
+const HospitalAPI = {
+  // 演示：读取本地模拟数据；生产环境改为 fetch(后端API)
+  async searchPatients(keyword) {
+    // ⬇️ 替换为真实 API 调用
+    // const resp = await fetch(`/api/patients/search?keyword=${encodeURIComponent(keyword)}`, {
+    //   headers: { 'Authorization': `Bearer ${localStorage.getItem('orthoai_token')}` }
+    // });
+    // const json = await resp.json();
+    // return json.data;
+
+    // 演示实现（本地查询）
+    return new Promise(resolve => {
+      setTimeout(() => resolve(DB.searchPatients(keyword)), 120);
+    });
+  },
+
+  // 演示：保存患者；生产环境 POST /api/patients
+  async savePatient(patient) {
+    // ⬇️ 替换为：await fetch('/api/patients', { method:'POST', body: JSON.stringify(patient) })
+    DB.upsertPatient(patient);
+    return patient;
+  },
+
+  // 演示：保存记录 + PDF；生产环境 POST /api/records（PDF 使用 FormData 上传）
+  async saveRecordWithPDF(record, pdfBase64) {
+    // ⬇️ 生产环境示例：
+    // const form = new FormData();
+    // form.append('record', JSON.stringify(record));
+    // form.append('pdf', dataURLtoBlob(pdfBase64), `${record.recordId}.pdf`);
+    // const resp = await fetch('/api/records/archive', { method:'POST', body: form });
+    // return resp.json();
+
+    DB.upsertRecord({ ...record, pdfBase64, archived: true, updatedAt: Date.now() });
+    return record;
+  }
+};
+
+/* ============================================================
+   2. 本地持久化（演示用；生产环境由后端数据库承担）
+   ============================================================ */
+const SEED_PATIENTS = [
+  { id: 'P-2024-0082', name: '张明', gender: '男', age: 56, diagnosis: '股骨转子间骨折' },
+  { id: 'P-2024-0091', name: '李芳', gender: '女', age: 68, diagnosis: '股骨颈骨折' },
+  { id: 'P-2024-0105', name: '王建国', gender: '男', age: 72, diagnosis: '转子下骨折' },
+  { id: 'P-2024-0118', name: '赵秀兰', gender: '女', age: 61, diagnosis: '股骨转子间骨折' },
+];
+
+const DB = {
+  PATIENTS_KEY: 'orthoai_patients_v3',
+  RECORDS_KEY: 'orthoai_records_v3',
+  DOCTOR_KEY: 'orthoai_doctor_v3',
+
+  init() {
+    if (!localStorage.getItem(this.PATIENTS_KEY)) {
+      localStorage.setItem(this.PATIENTS_KEY, JSON.stringify(SEED_PATIENTS));
+    }
+  },
+  getPatients() { try { return JSON.parse(localStorage.getItem(this.PATIENTS_KEY) || '[]'); } catch { return []; } },
+  savePatients(list) { localStorage.setItem(this.PATIENTS_KEY, JSON.stringify(list)); },
+  searchPatients(query) {
+    const q = (query || '').toLowerCase().trim();
+    const all = this.getPatients();
+    if (!q) return all;
+    return all.filter(p =>
+      p.id.toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
+      (p.diagnosis || '').includes(q)
+    );
+  },
+  upsertPatient(patient) {
+    const list = this.getPatients();
+    const idx = list.findIndex(p => p.id === patient.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...patient };
+    else list.push(patient);
+    this.savePatients(list);
+    return patient;
+  },
+  getRecords() { try { return JSON.parse(localStorage.getItem(this.RECORDS_KEY) || '[]'); } catch { return []; } },
+  saveRecords(list) { localStorage.setItem(this.RECORDS_KEY, JSON.stringify(list)); },
+  searchRecords(query) {
+    const q = (query || '').toLowerCase().trim();
+    const all = this.getRecords();
+    if (!q) return all;
+    return all.filter(r =>
+      (r.recordId || '').toLowerCase().includes(q) ||
+      (r.patientId || '').toLowerCase().includes(q) ||
+      (r.patientName || '').toLowerCase().includes(q)
+    );
+  },
+  upsertRecord(record) {
+    const list = this.getRecords();
+    const idx = list.findIndex(r => r.recordId === record.recordId);
+    if (idx >= 0) list[idx] = { ...list[idx], ...record };
+    else list.unshift(record);
+    // 控制存储体积：保留最近 6 条带 PDF 的记录，其余清理 pdfBase64
+    try { this.saveRecords(list); } catch (e) { this.cleanupPDFs(); this.saveRecords(list); }
+    this.cleanupPDFs();
+    return record;
+  },
+  cleanupPDFs() {
+    const list = this.getRecords();
+    const withPdf = list.filter(r => r.pdfBase64);
+    if (withPdf.length > 6) {
+      withPdf.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      withPdf.slice(6).forEach(r => {
+        const full = this.getRecords().find(x => x.recordId === r.recordId);
+        if (full) { delete full.pdfBase64; this.saveRecords(this.getRecords().map(x => x.recordId === full.recordId ? full : x)); }
+      });
+    }
+  },
+  getRecordById(recordId) { return this.getRecords().find(r => r.recordId === recordId) || null; },
+  // 主治医生（自动保存，下次访问默认沿用）
+  getDoctor() { return localStorage.getItem(this.DOCTOR_KEY) || ''; },
+  setDoctor(name) { localStorage.setItem(this.DOCTOR_KEY, name); }
+};
+DB.init();
+
+/* ============================================================
+   3. 模拟 AI 接口
+   ============================================================ */
+const AIApi = {
+  async measure() {
+    await new Promise(r => setTimeout(r, 1500));
+    return {
+      points: {
+        fractureStart: { x: 0.38, y: 0.32 },
+        fractureEnd: { x: 0.63, y: 0.58 },
+        femoralHead: { x: 0.28, y: 0.55 },
+        greaterTrochanter: { x: 0.58, y: 0.22 }
+      },
+      contour: [
+        { x: 0.23, y: 0.6 }, { x: 0.33, y: 0.28 }, { x: 0.53, y: 0.18 },
+        { x: 0.73, y: 0.32 }, { x: 0.7, y: 0.62 }, { x: 0.5, y: 0.72 }
+      ]
+    };
+  },
+  async predict(clinical, mfla) {
+    await new Promise(r => setTimeout(r, 1500));
+    let difficulty = '中', surgeryTime = 90, risk = 45;
+    const reasons = [];
+    if (mfla > 45) { difficulty = '高'; surgeryTime += 30; risk += 25; reasons.push('主骨折线角度过大 (MFLA > 45°)'); }
+    else reasons.push('主骨折线角度尚可 (MFLA ≤ 45°)');
+    if (clinical.lateralWall === '不完整') { difficulty = '高'; surgeryTime += 20; risk += 18; reasons.push('外侧壁不完整'); }
+    if (clinical.osteoporosis === '有') { risk += 10; reasons.push('骨质疏松'); }
+    if (clinical.age > 70) { surgeryTime += 10; risk += 5; reasons.push('高龄'); }
+    surgeryTime = Math.min(180, surgeryTime);
+    risk = Math.min(95, risk);
+    if (difficulty === '高' && surgeryTime < 110) surgeryTime = 110;
+    return { difficulty, surgeryTime, risk, reasons };
+  }
+};
+
+/* ============================================================
+   4. 全局状态
+   ============================================================ */
+const state = {
+  patient: null,
+  recordId: null,
+  imageLoaded: false,
+  imageObj: null,
+  points: {
+    fractureStart: { x: 0.4, y: 0.35 },
+    fractureEnd: { x: 0.62, y: 0.55 },
+    femoralHead: { x: 0.3, y: 0.5 },
+    greaterTrochanter: { x: 0.55, y: 0.25 }
+  },
+  contour: [
+    { x: 0.25, y: 0.6 }, { x: 0.35, y: 0.3 }, { x: 0.55, y: 0.2 },
+    { x: 0.7, y: 0.35 }, { x: 0.68, y: 0.6 }, { x: 0.5, y: 0.7 }
+  ],
+  mfla: null,
+  measureConfirmed: false,
+  prediction: null,
+  draggingPoint: null,
+  dragOffset: { x: 0, y: 0 },
+  currentStep: 1,
+  aiRunning: false,
+  predictRunning: false,
+  pdfRunning: false
+};
+
+/* ============================================================
+   5. 工具函数
+   ============================================================ */
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icon = type === 'error' ? 'fa-exclamation-circle' : type === 'info' ? 'fa-info-circle' : 'fa-check-circle';
+  el.innerHTML = `<i class="fas ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 2800);
+  setTimeout(() => el.remove(), 3200);
+}
+function setLoading(show, text = 'AI 分析中...') {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts), pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function genRecordId() {
+  return 'REC-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1000);
+}
+
+/* ============================================================
+   6. 画布与影像
+   ============================================================ */
+const canvas = document.getElementById('xrayCanvas');
+const ctx = canvas.getContext('2d');
+const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+
+function drawCanvas() {
+  if (!state.imageObj) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(state.imageObj, 0, 0, canvas.width, canvas.height);
+  const w = canvas.width, h = canvas.height;
+
+  if (state.contour?.length) {
+    ctx.beginPath();
+    ctx.moveTo(state.contour[0].x * w, state.contour[0].y * h);
+    for (let i = 1; i < state.contour.length; i++) ctx.lineTo(state.contour[i].x * w, state.contour[i].y * h);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(42, 127, 170, 0.25)';
+    ctx.fill();
+    ctx.strokeStyle = '#2a7faa'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  const p1 = state.points.fractureStart, p2 = state.points.fractureEnd;
+  if (p1 && p2) {
+    ctx.beginPath();
+    ctx.moveTo(p1.x * w, p1.y * h); ctx.lineTo(p2.x * w, p2.y * h);
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  const defs = [
+    { key: 'fractureStart', color: '#f97316', label: 'F1' },
+    { key: 'fractureEnd', color: '#f97316', label: 'F2' },
+    { key: 'femoralHead', color: '#22c55e', label: 'FH' },
+    { key: 'greaterTrochanter', color: '#22c55e', label: 'GT' }
+  ];
+  defs.forEach(def => {
+    const p = state.points[def.key]; if (!p) return;
+    ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = def.color; ctx.shadowColor = 'white'; ctx.shadowBlur = 8;
+    ctx.fill(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'white'; ctx.font = 'bold 12px "Segoe UI"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(def.label, p.x * w, p.y * h - 15);
+  });
+}
+
+function makeThumbnail(img) {
+  try {
+    const tc = document.createElement('canvas');
+    const scale = 480 / img.width;
+    tc.width = 480; tc.height = Math.max(1, Math.round(img.height * scale));
+    tc.getContext('2d').drawImage(img, 0, 0, tc.width, tc.height);
+    return tc.toDataURL('image/jpeg', 0.72);
+  } catch { return null; }
+}
+
+/* ============================================================
+   7. MFLA / UI
+   ============================================================ */
+function computeMFLA() {
+  const p1 = state.points.fractureStart, p2 = state.points.fractureEnd;
+  if (!p1 || !p2) return null;
+  let angleDeg = Math.abs(Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI);
+  if (angleDeg > 90) angleDeg = 180 - angleDeg;
+  state.mfla = Math.round(Math.min(89.9, angleDeg + 8.3) * 10) / 10;
+  return state.mfla;
+}
+
+function updateUI() {
+  if (state.mfla !== null) {
+    document.getElementById('mflaValue').textContent = state.mfla.toFixed(1);
+    document.getElementById('reportMfla').textContent = state.mfla.toFixed(1);
+  }
+  const p1 = state.points.fractureStart, p2 = state.points.fractureEnd;
+  document.getElementById('fracturePointsLabel').textContent =
+    (p1 && p2) ? `起 (${(p1.x * 100).toFixed(0)}%, ${(p1.y * 100).toFixed(0)}%) 止 (${(p2.x * 100).toFixed(0)}%, ${(p2.y * 100).toFixed(0)}%)` : '尚未标记';
+  document.getElementById('contourLabel').textContent = state.contour?.length ? '已标记 (多边形)' : '—';
+  document.getElementById('pointList').innerHTML = `
+    <div class="point-chip"><span class="dot" style="background:#f97316;"></span> 骨折线起点</div>
+    <div class="point-chip"><span class="dot" style="background:#f97316;"></span> 骨折线终点</div>
+    <div class="point-chip"><span class="dot" style="background:#22c55e;"></span> 股骨头中心</div>
+    <div class="point-chip"><span class="dot" style="background:#22c55e;"></span> 大转子</div>
+  `;
+  // 报告面板同步
+  document.getElementById('reportDoctor').textContent = DB.getDoctor() || '—';
+  if (state.patient) document.getElementById('reportPatient').textContent =
+    `${state.patient.name} (${state.patient.id}) · ${state.patient.diagnosis || '—'}`;
+  if (state.recordId) document.getElementById('reportRecordId').textContent = state.recordId;
+}
+
+/* ============================================================
+   8. 鼠标拖拽
+   ============================================================ */
+function getMouseNorm(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  return { x: ((e.clientX - rect.left) * sx) / canvas.width, y: ((e.clientY - rect.top) * sy) / canvas.height };
+}
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function onMouseDown(e) {
+  if (!state.imageLoaded || state.mfla === null) return;
+  const m = getMouseNorm(e);
+  const keys = ['fractureStart', 'fractureEnd', 'femoralHead', 'greaterTrochanter'];
+  let closest = null, minDist = 0.06;
+  for (const k of keys) {
+    if (!state.points[k]) continue;
+    const d = dist(m, state.points[k]);
+    if (d < minDist) { minDist = d; closest = k; }
+  }
+  if (closest) {
+    state.draggingPoint = closest;
+    state.dragOffset = { x: state.points[closest].x - m.x, y: state.points[closest].y - m.y };
+    canvas.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+}
+function onMouseMove(e) {
+  if (!state.draggingPoint) return;
+  const m = getMouseNorm(e);
+  state.points[state.draggingPoint] = {
+    x: Math.min(0.98, Math.max(0.02, m.x + state.dragOffset.x)),
+    y: Math.min(0.98, Math.max(0.02, m.y + state.dragOffset.y))
+  };
+  computeMFLA();
+  drawCanvas();
+  updateUI();
+  e.preventDefault();
+}
+function onMouseUp() {
+  if (!state.draggingPoint) return;
+  state.draggingPoint = null;
+  canvas.style.cursor = 'crosshair';
+  state.measureConfirmed = false;
+  state.prediction = null;
+  document.getElementById('predictionResult').classList.add('hidden');
+  document.getElementById('predictBtn').disabled = true;
+  showToast('关键点已调整，请重新确认测量结果', 'info');
+}
+
+/* ============================================================
+   9. 患者库渲染 & 绑定
+   ============================================================ */
+function renderPatientList(list) {
+  const wrap = document.getElementById('patientResultList');
+  document.getElementById('patientCountLabel').textContent = `(${DB.getPatients().length})`;
+  if (!list.length) { wrap.innerHTML = `<div class="empty-hint"><i class="fas fa-inbox"></i><br>未找到匹配患者</div>`; return; }
+  wrap.innerHTML = list.map(p => `
+    <div class="patient-card">
+      <div>
+        <div class="name">${escapeHtml(p.name)} <span style="font-size:0.75rem; color:#64748b; font-weight:400;">${escapeHtml(p.gender)} · ${escapeHtml(p.age)}岁</span></div>
+        <div class="meta">ID: ${escapeHtml(p.id)} · ${escapeHtml(p.diagnosis || '—')}</div>
+      </div>
+      <button class="btn btn-primary" data-bind-patient="${escapeHtml(p.id)}" style="padding:6px 14px; font-size:0.8rem;">
+        <i class="fas fa-link"></i> 绑定
+      </button>
+    </div>
+  `).join('');
+}
+
+function renderPatientDropdown(list) {
+  const dd = document.getElementById('patientDropdown');
+  if (!list.length) { dd.classList.remove('show'); return; }
+  dd.innerHTML = list.slice(0, 6).map(p => `
+    <div class="auto-search-item" data-bind-patient="${escapeHtml(p.id)}">
+      <div class="info">
+        <div class="name">${escapeHtml(p.name)} <span style="color:#64748b; font-weight:400;">· ${escapeHtml(p.gender)} · ${escapeHtml(p.age)}岁</span></div>
+        <div style="font-size:0.75rem; color:#94a3b8;">${escapeHtml(p.id)} · ${escapeHtml(p.diagnosis || '')}</div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:#94a3b8;"></i>
+    </div>
+  `).join('');
+  dd.classList.add('show');
+}
+
+function bindPatient(patientId) {
+  const patient = DB.getPatients().find(p => p.id === patientId);
+  if (!patient) { showToast('患者不存在', 'error'); return; }
+  state.patient = patient;
+  document.getElementById('patientDisplay').textContent = `${patient.name} · ${patient.gender} · ${patient.age}岁`;
+  document.getElementById('patientIdChip').textContent = `ID: ${patient.id}`;
+  document.getElementById('ageInput').value = patient.age;
+  document.getElementById('genderInput').value = patient.gender;
+  document.getElementById('patientDropdown').classList.remove('show');
+  document.getElementById('patientSearchInput').value = patient.id;
+  showToast(`已绑定患者：${patient.name}`, 'success');
+  setActiveStep(2);
+  document.getElementById('xrayContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ============================================================
+   10. 步骤切换
+   ============================================================ */
+function setActiveStep(n) {
+  state.currentStep = n;
+  document.querySelectorAll('.step-card').forEach(c => c.classList.toggle('active', +c.dataset.step === n));
+  ['step1Content', 'step5Content', 'step6Content'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  if (n === 1 || n === 2) {
+    document.getElementById('step1Content').classList.remove('hidden');
+  } else if (n === 5 || n === 3 || n === 4) {
+    document.getElementById('step5Content').classList.remove('hidden');
+    const pb = document.getElementById('predictBtn');
+    if (pb) pb.disabled = !state.measureConfirmed;
+  } else if (n === 6) {
+    document.getElementById('step6Content').classList.remove('hidden');
+    updateUI();
+  }
+}
+
+/* ============================================================
+   11. 上传 & AI 测量
+   ============================================================ */
+async function handleUpload(file) {
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = ev.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    state.imageObj = img;
+    state.imageLoaded = true;
+    uploadPlaceholder.style.display = 'none';
+    canvas.style.display = 'block';
+    document.getElementById('imageStatusBadge').textContent = '已上传';
+    state.mfla = null; state.measureConfirmed = false; state.prediction = null;
+    document.getElementById('mflaValue').textContent = '—';
+    document.getElementById('fracturePointsLabel').textContent = '尚未标记';
+    document.getElementById('contourLabel').textContent = '—';
+    document.getElementById('pointList').innerHTML = '';
+    document.getElementById('predictionResult').classList.add('hidden');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    setActiveStep(2);
+    showToast('X 光片上传成功', 'success');
+  } catch { showToast('图像加载失败，请重试', 'error'); }
+}
+
+async function runAutoMeasure() {
+  if (!state.imageLoaded) { showToast('请先上传 X 光片', 'error'); return; }
+  if (state.aiRunning) { showToast('AI 分析进行中，请稍候', 'info'); return; }
+  state.aiRunning = true;
+  setLoading(true, 'AI 正在分割股骨轮廓 & 检测关键点...');
+  try {
+    const result = await AIApi.measure();
+    state.points = result.points;
+    state.contour = result.contour;
+    computeMFLA();
+    drawCanvas();
+    updateUI();
+    document.getElementById('imageStatusBadge').textContent = '已导入 · 已测量';
+    state.measureConfirmed = false;
+    state.prediction = null;
+    document.getElementById('predictionResult').classList.add('hidden');
+    setActiveStep(4);
+    showToast('AI 测量完成，请人工校验关键点', 'success');
+  } catch { showToast('AI 分析失败', 'error'); }
+  finally { state.aiRunning = false; setLoading(false); }
+}
+
+function confirmMeasurement() {
+  if (state.mfla === null) { showToast('请先执行 AI 自动测量', 'error'); return; }
+  if (!state.patient) { showToast('请先绑定患者', 'error'); return; }
+  state.measureConfirmed = true;
+
+  const existing = state.recordId ? DB.getRecordById(state.recordId) : null;
+  const record = existing || {
+    recordId: genRecordId(),
+    patientId: state.patient.id,
+    patientName: state.patient.name,
+    createdAt: Date.now(),
+    archived: false
+  };
+  state.recordId = record.recordId;
+  record.mfla = state.mfla;
+  record.points = JSON.parse(JSON.stringify(state.points));
+  record.contour = JSON.parse(JSON.stringify(state.contour));
+  record.clinical = collectClinical();
+  record.doctor = DB.getDoctor();
+  record.thumbnail = state.imageObj ? makeThumbnail(state.imageObj) : null;
+  record.updatedAt = Date.now();
+  DB.upsertRecord(record);
+
+  setActiveStep(5);
+  showToast('测量结果已保存，可继续录入临床数据', 'success');
+}
+
+function collectClinical() {
+  return {
+    age: parseInt(document.getElementById('ageInput').value) || 0,
+    gender: document.getElementById('genderInput').value,
+    asa: document.getElementById('asaInput').value,
+    lateralWall: document.getElementById('lateralWallInput').value,
+    osteoporosis: document.getElementById('osteoporosisInput').value,
+    fractureType: document.getElementById('fractureTypeInput').value
+  };
+}
+function applyClinical(clinical) {
+  if (!clinical) return;
+  document.getElementById('ageInput').value = clinical.age ?? '';
+  document.getElementById('genderInput').value = clinical.gender || '男';
+  document.getElementById('asaInput').value = clinical.asa || 'III';
+  document.getElementById('lateralWallInput').value = clinical.lateralWall || '不完整';
+  document.getElementById('osteoporosisInput').value = clinical.osteoporosis || '有';
+  document.getElementById('fractureTypeInput').value = clinical.fractureType || '转子间';
+}
+
+async function runPredict() {
+  if (!state.measureConfirmed) { showToast('请先确认并保存测量结果', 'error'); return; }
+  if (state.predictRunning) { showToast('预测进行中，请稍候', 'info'); return; }
+  state.predictRunning = true;
+  setLoading(true, 'AI 预测模型中...');
+  try {
+    const clinical = collectClinical();
+    const result = await AIApi.predict(clinical, state.mfla);
+    state.prediction = result;
+
+    document.getElementById('difficultyValue').textContent = result.difficulty;
+    document.getElementById('surgeryTimeValue').textContent = result.surgeryTime + ' 分钟';
+    document.getElementById('riskValue').textContent = result.risk + '%';
+    document.getElementById('reasonList').innerHTML = result.reasons
+      .map(r => `<li><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(r)}</li>`).join('');
+    document.getElementById('predictionResult').classList.remove('hidden');
+
+    // 持久化
+    const existing = state.recordId ? DB.getRecordById(state.recordId) : null;
+    const record = existing || {
+      recordId: genRecordId(),
+      patientId: state.patient.id,
+      patientName: state.patient.name,
+      mfla: state.mfla,
+      points: JSON.parse(JSON.stringify(state.points)),
+      contour: JSON.parse(JSON.stringify(state.contour)),
+      thumbnail: state.imageObj ? makeThumbnail(state.imageObj) : null,
+      createdAt: Date.now(),
+      archived: false
+    };
+    state.recordId = record.recordId;
+    record.prediction = result;
+    record.clinical = clinical;
+    record.doctor = DB.getDoctor();
+    record.updatedAt = Date.now();
+    DB.upsertRecord(record);
+
+    showToast('预测完成，结果已保存', 'success');
+  } catch { showToast('预测失败', 'error'); }
+  finally { state.predictRunning = false; setLoading(false); }
+}
+
+/* ============================================================
+   12. PDF 报告生成
+   ============================================================ */
+function buildReportHTML() {
+  const p = state.patient;
+  const mfla = state.mfla;
+  const pred = state.prediction;
+  const clinical = collectClinical();
+  const doctor = DB.getDoctor() || '—';
+  const date = new Date().toLocaleString('zh-CN');
+  const recordId = state.recordId || '—';
+  const thumb = state.imageObj ? makeThumbnail(state.imageObj) : null;
+
+  return `
+    <div style="font-family: 'Microsoft YaHei','SimHei','PingFang SC',sans-serif; color:#1a2b3c; padding:36px; width:794px; background:#ffffff;">
+      <!-- 标题 -->
+      <div style="text-align:center; border-bottom:3px solid #0b3b5c; padding-bottom:16px; margin-bottom:24px;">
+        <div style="font-size:13px; color:#64748b; letter-spacing:3px;">ORTHOAI 骨科智能评估系统</div>
+        <h1 style="font-size:26px; color:#0b3b5c; margin:8px 0;">术前影像评估与预测报告</h1>
+        <div style="font-size:12px; color:#94a3b8;">报告编号：${recordId}</div>
+      </div>
+
+      <!-- 患者信息 -->
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:15px; color:#2a7faa; border-left:4px solid #2a7faa; padding-left:10px; margin-bottom:12px;">患者信息</h2>
+        <table style="width:100%; font-size:13px; border-collapse:collapse;">
+          <tr>
+            <td style="padding:6px 0; width:22%; color:#64748b;">患者姓名</td>
+            <td style="padding:6px 0; width:28%; font-weight:600;">${p?.name || '—'}</td>
+            <td style="padding:6px 0; width:22%; color:#64748b;">患者ID</td>
+            <td style="padding:6px 0; width:28%; font-weight:600;">${p?.id || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#64748b;">性别 / 年龄</td>
+            <td style="padding:6px 0;">${p?.gender || '—'} / ${p?.age || '—'}岁</td>
+            <td style="padding:6px 0; color:#64748b;">主治医生</td>
+            <td style="padding:6px 0; font-weight:600;">${escapeHtml(doctor)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0; color:#64748b;">初步诊断</td>
+            <td style="padding:6px 0;">${p?.diagnosis || '—'}</td>
+            <td style="padding:6px 0; color:#64748b;">报告日期</td>
+            <td style="padding:6px 0;">${date}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- 影像测量结果 -->
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:15px; color:#2a7faa; border-left:4px solid #2a7faa; padding-left:10px; margin-bottom:12px;">影像测量结果</h2>
+        <div style="background:#f8fafc; padding:16px; border-radius:8px; display:flex; gap:24px; align-items:center;">
+          ${thumb ? `<img src="${thumb}" style="width:200px; border-radius:8px; border:1px solid #e2e8f0;" />` : ''}
+          <div style="display:flex; flex-direction:column; gap:12px; flex:1;">
+            <div>
+              <div style="font-size:12px; color:#64748b;">MFLA 角度</div>
+              <div style="font-size:34px; font-weight:700; color:#0b3b5c; line-height:1.1;">${mfla != null ? mfla.toFixed(1) + '°' : '—'}</div>
+            </div>
+            <div>
+              <div style="font-size:12px; color:#64748b;">骨折线起止点</div>
+              <div style="font-size:13px; font-weight:500;">
+                ${state.points.fractureStart ? `起(${(state.points.fractureStart.x*100).toFixed(0)}%, ${(state.points.fractureStart.y*100).toFixed(0)}%) 止(${(state.points.fractureEnd.x*100).toFixed(0)}%, ${(state.points.fractureEnd.y*100).toFixed(0)}%)` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12px; color:#64748b;">股骨轮廓</div>
+              <div style="font-size:13px;">${state.contour?.length ? '已标记' : '—'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 临床基线数据 -->
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:15px; color:#2a7faa; border-left:4px solid #2a7faa; padding-left:10px; margin-bottom:12px;">临床基线数据</h2>
+        <table style="width:100%; font-size:13px; border-collapse:collapse; background:#f8fafc; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:10px 16px; color:#64748b; width:22%;">年龄</td>
+            <td style="padding:10px 16px; font-weight:600; width:28%;">${clinical.age}岁</td>
+            <td style="padding:10px 16px; color:#64748b; width:22%;">性别</td>
+            <td style="padding:10px 16px; width:28%;">${clinical.gender}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 16px; color:#64748b;">ASA 分级</td>
+            <td style="padding:10px 16px;">${clinical.asa}</td>
+            <td style="padding:10px 16px; color:#64748b;">骨折类型</td>
+            <td style="padding:10px 16px;">${clinical.fractureType}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 16px; color:#64748b;">外侧壁完整性</td>
+            <td style="padding:10px 16px;">${clinical.lateralWall}</td>
+            <td style="padding:10px 16px; color:#64748b;">骨质疏松</td>
+            <td style="padding:10px 16px;">${clinical.osteoporosis}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- AI 预测结果 -->
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:15px; color:#2a7faa; border-left:4px solid #2a7faa; padding-left:10px; margin-bottom:12px;">AI 预测结果</h2>
+        ${pred ? `
+        <div style="display:flex; gap:12px; margin-bottom:14px;">
+          <div style="flex:1; background:${pred.difficulty === '高' ? '#fef2f2' : '#f0fdf4'}; border:1.5px solid ${pred.difficulty === '高' ? '#fca5a5' : '#86efac'}; border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:12px; color:#64748b; margin-bottom:6px;">手术难度</div>
+            <div style="font-size:26px; font-weight:700; color:${pred.difficulty === '高' ? '#b91c1c' : '#15803d'};">${pred.difficulty}</div>
+          </div>
+          <div style="flex:1; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:12px; color:#64748b; margin-bottom:6px;">预计手术时间</div>
+            <div style="font-size:26px; font-weight:700; color:#1d4ed8;">${pred.surgeryTime} <span style="font-size:14px; font-weight:400;">分钟</span></div>
+          </div>
+          <div style="flex:1; background:#fff7ed; border:1.5px solid #fdba74; border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:12px; color:#64748b; margin-bottom:6px;">复位困难风险</div>
+            <div style="font-size:26px; font-weight:700; color:#c2410c;">${pred.risk}%</div>
+          </div>
+        </div>
+        <div style="background:#f8fafc; padding:12px 16px; border-radius:8px;">
+          <div style="font-size:13px; font-weight:600; margin-bottom:8px;">可解释原因：</div>
+          <ul style="margin:0; padding-left:20px; font-size:13px; color:#475569;">
+            ${pred.reasons.map(r => `<li style="margin-bottom:4px;">${escapeHtml(r)}</li>`).join('')}
+          </ul>
+        </div>
+        ` : '<div style="color:#94a3b8;">无预测数据</div>'}
+      </div>
+
+      <!-- 页脚 / 签名 -->
+      <div style="margin-top:36px; padding-top:16px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
+        <div>主治医生：${escapeHtml(doctor)}　签名：________________</div>
+        <div>报告生成时间：${date}</div>
+      </div>
+      <div style="margin-top:12px; font-size:11px; color:#94a3b8; text-align:center; line-height:1.6;">
+        本报告由 OrthoAI 系统自动生成，仅供临床参考。最终诊断与手术方案请以主诊医生的专业判断为准。
+      </div>
+    </div>
+  `;
+}
+
+async function generatePDF() {
+  if (!state.measureConfirmed || !state.prediction) {
+    showToast('请先完成测量并生成预测', 'error');
+    return null;
+  }
+  if (typeof html2canvas === 'undefined' || !window.jspdf) {
+    showToast('PDF 组件加载失败，请检查网络后刷新', 'error');
+    return null;
+  }
+
+  setLoading(true, '正在生成 PDF 报告...');
+  // 创建临时容器
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; left:-10000px; top:0; z-index:-1;';
+  container.innerHTML = buildReportHTML();
+  document.body.appendChild(container);
+
+  try {
+    const canvasEl = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const imgWidth = pageWidth - margin * 2;
+    const imgHeight = (canvasEl.height * imgWidth) / canvasEl.width;
+    const pageContentHeight = pageHeight - margin * 2;
+
+    const imgData = canvasEl.toDataURL('image/png');
+    let remaining = imgHeight;
+    let pageIndex = 0;
+    while (remaining > 0) {
+      if (pageIndex > 0) pdf.addPage();
+      const yOffset = margin - pageIndex * pageContentHeight;
+      pdf.addImage(imgData, 'PNG', margin, yOffset, imgWidth, imgHeight);
+      remaining -= pageContentHeight;
+      pageIndex++;
+    }
+    return pdf;
+  } finally {
+    document.body.removeChild(container);
+    setLoading(false);
+  }
+}
+
+/* ============================================================
+   13. 历史记录
+   ============================================================ */
+function renderHistoryList(list) {
+  const wrap = document.getElementById('historyResultList');
+  if (!list.length) { wrap.innerHTML = `<div class="empty-hint"><i class="fas fa-inbox"></i><br>暂无历史记录</div>`; return; }
+  wrap.innerHTML = list.map(r => `
+    <div class="record-card">
+      <div style="flex:1; min-width:0;">
+        <div class="name">
+          ${escapeHtml(r.patientName)}
+          <span style="font-size:0.72rem; color:#64748b; font-weight:400;">(${escapeHtml(r.patientId)})</span>
+          ${r.archived ? '<span class="chip" style="font-size:0.7rem; background:#dcfce7; color:#166534;">已归档</span>' : '<span class="chip" style="font-size:0.7rem; background:#fef3c7; color:#92400e;">草稿</span>'}
+          ${r.pdfBase64 ? '<span class="chip" style="font-size:0.7rem; background:#e0f2fe; color:#075985;"><i class="fas fa-file-pdf"></i> PDF</span>' : ''}
+        </div>
+        <div class="meta">
+          记录：${escapeHtml(r.recordId)} · MFLA：${r.mfla != null ? r.mfla.toFixed(1) + '°' : '—'}
+          ${r.prediction ? ` · 难度：${escapeHtml(r.prediction.difficulty)}` : ''}
+          ${r.doctor ? ` · 医生：${escapeHtml(r.doctor)}` : ''}
+          · ${formatDate(r.updatedAt || r.createdAt)}
+        </div>
+      </div>
+      <div class="record-actions">
+        ${r.pdfBase64 ? `<button class="btn btn-success" data-download-pdf="${escapeHtml(r.recordId)}" style="padding:6px 12px; font-size:0.78rem;"><i class="fas fa-download"></i> 报告</button>` : ''}
+        <button class="btn btn-primary" data-load-record="${escapeHtml(r.recordId)}" style="padding:6px 12px; font-size:0.78rem;"><i class="fas fa-folder-open"></i> 加载</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadRecord(recordId) {
+  const record = DB.getRecordById(recordId);
+  if (!record) { showToast('记录不存在', 'error'); return; }
+  setLoading(true, '正在加载病例...');
+  try {
+    const p = DB.getPatients().find(x => x.id === record.patientId);
+    state.patient = p || { id: record.patientId, name: record.patientName, diagnosis: '' };
+    document.getElementById('patientDisplay').textContent =
+      `${state.patient.name} · ${state.patient.gender || ''} · ${state.patient.age || ''}岁`;
+    document.getElementById('patientIdChip').textContent = `ID: ${state.patient.id}`;
+
+    state.mfla = record.mfla;
+    state.points = record.points || state.points;
+    state.contour = record.contour || state.contour;
+    state.measureConfirmed = true;
+    state.recordId = record.recordId;
+    state.prediction = record.prediction || null;
+
+    if (record.thumbnail) {
+      const img = new Image();
+      await new Promise(resolve => {
+        img.onload = () => {
+          state.imageObj = img;
+          state.imageLoaded = true;
+          uploadPlaceholder.style.display = 'none';
+          canvas.style.display = 'block';
+          resolve();
+        };
+        img.onerror = resolve;
+        img.src = record.thumbnail;
+      });
+    } else {
+      state.imageObj = null; state.imageLoaded = false;
+      uploadPlaceholder.style.display = 'flex'; canvas.style.display = 'none';
+    }
+
+    applyClinical(record.clinical);
+    if (state.imageLoaded) drawCanvas();
+    updateUI();
+
+    if (record.prediction) {
+      document.getElementById('difficultyValue').textContent = record.prediction.difficulty;
+      document.getElementById('surgeryTimeValue').textContent = record.prediction.surgeryTime + ' 分钟';
+      document.getElementById('riskValue').textContent = record.prediction.risk + '%';
+      document.getElementById('reasonList').innerHTML = record.prediction.reasons
+        .map(r => `<li><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(r)}</li>`).join('');
+      document.getElementById('predictionResult').classList.remove('hidden');
+    } else {
+      document.getElementById('predictionResult').classList.add('hidden');
+    }
+    document.getElementById('imageStatusBadge').textContent = state.imageLoaded ? '已导入 · 已测量' : '未上传';
+
+    document.getElementById('historyModal').classList.remove('show');
+    setActiveStep(5);
+    showToast('病例已加载', 'success');
+  } catch (e) {
+    console.error(e);
+    showToast('加载失败', 'error');
+  } finally { setLoading(false); }
+}
+
+/* ============================================================
+   14. 事件绑定
+   ============================================================ */
+function initEvents() {
+  // 画布拖拽
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('mouseleave', onMouseUp);
+
+  // 主治医生：自动保存
+  const doctorInput = document.getElementById('doctorNameInput');
+  doctorInput.value = DB.getDoctor();
+  doctorInput.addEventListener('input', () => {
+    DB.setDoctor(doctorInput.value.trim());
+    updateUI();
+  });
+  doctorInput.addEventListener('blur', () => {
+    const val = doctorInput.value.trim();
+    if (val) showToast(`主治医生已保存：${val}`, 'info');
+  });
+
+  // 上传
+  document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleUpload(e.target.files[0]);
+  });
+
+  document.getElementById('autoMeasureBtn').addEventListener('click', runAutoMeasure);
+  document.getElementById('confirmMeasureBtn').addEventListener('click', confirmMeasurement);
+  document.getElementById('predictBtn').addEventListener('click', runPredict);
+
+  // 患者搜索
+  const searchInput = document.getElementById('patientSearchInput');
+  let searchTimer = null;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      const q = searchInput.value.trim();
+      const list = await HospitalAPI.searchPatients(q);
+      renderPatientList(list);
+      if (q) renderPatientDropdown(list);
+      else document.getElementById('patientDropdown').classList.remove('show');
+    }, 180);
+  });
+  searchInput.addEventListener('keydown', async e => {
+    if (e.key === 'Enter') {
+      document.getElementById('patientDropdown').classList.remove('show');
+      renderPatientList(await HospitalAPI.searchPatients(searchInput.value.trim()));
+    }
+  });
+  document.getElementById('searchPatientBtn').addEventListener('click', async () => {
+    document.getElementById('patientDropdown').classList.remove('show');
+    renderPatientList(await HospitalAPI.searchPatients(searchInput.value.trim()));
+  });
+  document.getElementById('refreshPatientBtn').addEventListener('click', () => {
+    renderPatientList(DB.getPatients());
+    showToast('患者库已刷新', 'info');
+  });
+
+  // 全局点击：绑定患者 / 加载记录 / 下载PDF / 收起下拉
+  document.addEventListener('click', e => {
+    const bindBtn = e.target.closest('[data-bind-patient]');
+    if (bindBtn) { bindPatient(bindBtn.getAttribute('data-bind-patient')); return; }
+
+    const loadBtn = e.target.closest('[data-load-record]');
+    if (loadBtn) { loadRecord(loadBtn.getAttribute('data-load-record')); return; }
+
+    const dlBtn = e.target.closest('[data-download-pdf]');
+    if (dlBtn) {
+      const rec = DB.getRecordById(dlBtn.getAttribute('data-download-pdf'));
+      if (rec?.pdfBase64) {
+        const a = document.createElement('a');
+        a.href = rec.pdfBase64;
+        a.download = `术前评估报告_${rec.patientName}_${rec.recordId}.pdf`;
+        a.click();
+        showToast('报告下载中...', 'success');
+      } else { showToast('该记录没有PDF存档', 'error'); }
+      return;
+    }
+
+    if (!e.target.closest('#patientSearchInput') && !e.target.closest('#patientDropdown')) {
+      document.getElementById('patientDropdown').classList.remove('show');
+    }
+  });
+
+  // 新增患者
+  document.getElementById('newPatientBtn').addEventListener('click', () => {
+    document.getElementById('npId').value = 'P-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 9000) + 1000);
+    document.getElementById('npName').value = '';
+    document.getElementById('npAge').value = '';
+    document.getElementById('npDiagnosis').value = '';
+    document.getElementById('newPatientModal').classList.add('show');
+  });
+  const closeNewPatient = () => document.getElementById('newPatientModal').classList.remove('show');
+  document.getElementById('closeNewPatientBtn').addEventListener('click', closeNewPatient);
+  document.getElementById('cancelNewPatientBtn').addEventListener('click', closeNewPatient);
+  document.getElementById('saveNewPatientBtn').addEventListener('click', async () => {
+    const id = document.getElementById('npId').value.trim();
+    const name = document.getElementById('npName').value.trim();
+    if (!id || !name) { showToast('ID 和姓名必填', 'error'); return; }
+    const patient = {
+      id, name,
+      gender: document.getElementById('npGender').value,
+      age: parseInt(document.getElementById('npAge').value) || 0,
+      diagnosis: document.getElementById('npDiagnosis').value.trim() || '—'
+    };
+    await HospitalAPI.savePatient(patient);
+    closeNewPatient();
+    renderPatientList(DB.getPatients());
+    showToast('患者已保存到患者库', 'success');
+  });
+
+  // 历史记录
+  document.getElementById('historyBtn').addEventListener('click', () => {
+    document.getElementById('historySearchInput').value = '';
+    renderHistoryList(DB.searchRecords(''));
+    document.getElementById('historyModal').classList.add('show');
+  });
+  document.getElementById('closeHistoryBtn').addEventListener('click', () => document.getElementById('historyModal').classList.remove('show'));
+  document.getElementById('historySearchBtn').addEventListener('click', () => {
+    renderHistoryList(DB.searchRecords(document.getElementById('historySearchInput').value));
+  });
+  document.getElementById('historySearchInput').addEventListener('input', e => {
+    renderHistoryList(DB.searchRecords(e.target.value));
+  });
+
+  // 生成PDF（不归档）
+  document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+    if (state.pdfRunning) return;
+    state.pdfRunning = true;
+    try {
+      const pdf = await generatePDF();
+      if (pdf) {
+        pdf.save(`术前评估报告_${state.patient?.name || '患者'}_${state.recordId || Date.now()}.pdf`);
+        showToast('PDF 报告已生成并下载', 'success');
+      }
+    } catch (e) { console.error(e); showToast('PDF 生成失败', 'error'); }
+    finally { state.pdfRunning = false; }
+  });
+
+  // 生成PDF + 归档到数据库 + 下载
+  document.getElementById('archiveBtn').addEventListener('click', async () => {
+    if (!state.recordId) { showToast('无可归档的记录', 'error'); return; }
+    if (state.pdfRunning) return;
+    state.pdfRunning = true;
+    try {
+      const pdf = await generatePDF();
+      if (!pdf) return;
+      const pdfBase64 = pdf.output('datauristring');
+      const record = DB.getRecordById(state.recordId);
+      if (!record) { showToast('记录不存在', 'error'); return; }
+
+      record.pdfBase64 = pdfBase64;
+      record.pdfGeneratedAt = Date.now();
+      record.doctor = DB.getDoctor();
+      record.archived = true;
+      record.updatedAt = Date.now();
+      await HospitalAPI.saveRecordWithPDF(record, pdfBase64);
+
+      // 下载
+      pdf.save(`术前评估报告_${state.patient?.name || '患者'}_${state.recordId}.pdf`);
+      showToast('PDF 已生成、下载并归档到数据库', 'success');
+      // 刷新报告面板
+      updateUI();
+    } catch (e) {
+      console.error(e);
+      showToast('归档失败，存储空间可能不足', 'error');
+    } finally { state.pdfRunning = false; }
+  });
+
+  // 步骤卡片
+  document.querySelectorAll('.step-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const n = +card.dataset.step;
+      if (n === 6 && !state.prediction) { showToast('请先在步骤 5 生成预测', 'info'); return; }
+      if ((n === 5 || n === 3 || n === 4) && !state.measureConfirmed) {
+        showToast('请先完成并确认 AI 测量', 'info'); return;
+      }
+      if (n === 2) { document.getElementById('xrayContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      setActiveStep(n);
+    });
+  });
+}
+
+/* ============================================================
+   15. 初始化
+   ============================================================ */
+function init() {
+  initEvents();
+  renderPatientList(DB.getPatients());
+  setActiveStep(1);
+  ctx.fillStyle = '#1e2b36';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('patientCountLabel').textContent = `(${DB.getPatients().length})`;
+}
+init();
+</script>
+</body>
+</html>
